@@ -1,0 +1,48 @@
+name: Trigger auto deployment for flowise
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '**'
+    - '.github/workflows/flowise-AutoDeployTrigger-4704ec1e-55dc-405d-8013-4ceab01ffd17.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.FLOWISE_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.FLOWISE_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.FLOWISE_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          registryUrl: 
+          registryUsername: ${{ secrets.FLOWISE_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.FLOWISE_REGISTRY_PASSWORD }}
+          containerAppName: flowise
+          resourceGroup: ContApps
+          imageToBuild: default/[parameters('containerAppName')]:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
